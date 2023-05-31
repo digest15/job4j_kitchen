@@ -8,10 +8,10 @@ import org.springframework.context.annotation.Bean;
 import javax.sql.DataSource;
 
 @SpringBootApplication
-public class kitchenApplication {
+public class KitchenApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(kitchenApplication.class, args);
+		SpringApplication.run(KitchenApplication.class, args);
 	}
 
 	@Bean

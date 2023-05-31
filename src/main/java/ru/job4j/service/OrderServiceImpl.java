@@ -3,10 +3,10 @@ package ru.job4j.service;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import ru.job4j.domain.Order;
 import ru.job4j.domain.OrderStatus;
+import ru.job4j.domain.Status;
 import ru.job4j.domain.dto.DishDTO;
 import ru.job4j.domain.dto.OrderDTO;
 import ru.job4j.repository.OrderRepository;
@@ -14,6 +14,7 @@ import ru.job4j.repository.OrderRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,14 +53,34 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @KafkaListener(topics = "job4j_orders")
+    @KafkaListener(topics = "job4j_orders", groupId = "kitchen")
     public void receiveOrder(OrderDTO orderDTO) {
         log.debug(">>>>>>>>>>>>>>>>> " + orderDTO);
 
         Optional<Order> saved = save(fromOrderDtoToOrder(orderDTO));
         if (saved.isPresent()) {
-            orderStatusService.save(new OrderStatus(orderDTO.getId(), orderDTO.getStatus()));
+            orderStatusService.save(new OrderStatus(orderDTO.getId(), Status.WORK));
+
+            Status makeStatus = makeOrder(saved.get());
+            orderStatusService.save(new OrderStatus(orderDTO.getId(), makeStatus));
         }
+    }
+
+    private Status makeOrder(Order order) {
+        Status result = Status.READY;
+        try {
+            TimeUnit.SECONDS.sleep(5);
+
+            if (order.getId() % 2 == 0) {
+                throw new IllegalArgumentException();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalArgumentException e) {
+            result = Status.CANCELLED;
+        }
+
+        return result;
     }
 
     private Order fromOrderDtoToOrder(OrderDTO orderDTO) {

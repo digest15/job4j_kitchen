@@ -1,7 +1,9 @@
 package ru.job4j.service;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import ru.job4j.domain.Order;
 import ru.job4j.domain.OrderStatus;
@@ -11,11 +13,15 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Slf4j
 public class OrderStatusServiceImpl implements OrderStatusService {
 
-    private OrderStatusRepository orderStatusRepository;
+    private final OrderStatusRepository orderStatusRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${kafka-order-status-topic}")
+    private String orderStatusTopicName;
 
     @Override
     public List<OrderStatus> findAll() {
@@ -49,9 +55,15 @@ public class OrderStatusServiceImpl implements OrderStatusService {
             log.error("Save or Update was wrong", e);
         }
 
-        return orderStatus.getId() == 0
+        Optional<OrderStatus> optOrderStatus = orderStatus.getId() != 0
                 ? Optional.of(orderStatus)
                 : Optional.empty();
+
+        optOrderStatus.ifPresent(status ->
+                kafkaTemplate.send(orderStatusTopicName, status)
+        );
+
+        return optOrderStatus;
     }
 
     @Override
