@@ -45,19 +45,13 @@ public class OrderStatusServiceImpl implements OrderStatusService {
 
     @Override
     public Optional<OrderStatus> save(OrderStatus orderStatus) {
+        Optional<OrderStatus> optOrderStatus = Optional.empty();
         try {
-            orderStatus = orderStatusRepository.save(new OrderStatus(
-                            orderStatus.getOrderId(),
-                            orderStatus.getStatus()
-                    )
-            );
+            orderStatusRepository.save(new OrderStatus(orderStatus.getOrderId(), orderStatus.getStatus()));
+            optOrderStatus = Optional.of(orderStatus);
         } catch (Exception e) {
             log.error("Save or Update was wrong", e);
         }
-
-        Optional<OrderStatus> optOrderStatus = orderStatus.getId() != 0
-                ? Optional.of(orderStatus)
-                : Optional.empty();
 
         optOrderStatus.ifPresent(status ->
                 kafkaTemplate.send(orderStatusTopicName, status)
